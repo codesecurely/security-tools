@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -x
 help() {
     echo -e "Usage:\n ./do_ssl_scans.sh MODE (--all, --sslscan, --testssl)\n\nneeds gnmap output in pwd to run\n\noutput in sslscan/ and testssl/ dirs"
 }
@@ -13,6 +13,20 @@ if [[ -z "$GNMAP" ]]; then
     echo "[-] No gnmap files, exiting"
     exit 1
 fi
+if [[ $OSTYPE == darwin* ]]; then
+	HEAD=ghead
+else
+	HEAD=head
+fi
+
+check_ciphers() {
+    curl "https://ciphersuite.info/api/cs/" | jq '.ciphersuites[] | flatten | .[0] | [.openssl_name, .security] | join(" ")' | sed 's/"//g' > openssl_ciphers_strength.txt
+    cat $1 | grep -E '"cipher.*_x' |  awk -F " {2,}" '{print $3}' | sed 's/"//g' | while read cipher || [[ -n $cipher ]];
+    do
+        grep -w "^$cipher" openssl_cipher_strength.txt >> $1.report.out
+    done
+ 
+}
 
 run_sslscan() {
     if [ ! -d $(pwd)/sslscan ]; then
@@ -22,7 +36,6 @@ run_sslscan() {
         cat $ssl | while read line || [[ -n $line ]];
         do
             $SSLSCAN --no-colour $line > sslscan/$line.sslcan
-            cat sslscan/$line.sslcan | sed -n '/Supported Server Cipher(s):$/,/Server Key Exchange Group(s):$/p' | sed -e '1d' -e '$d' | head -n -1 | awk '{print $2, $5}' > sslscan/$line.sslscan.report.out
             echo "[+] Done sslscan for $line"
         done
     done
@@ -40,7 +53,8 @@ run_testssl() {
     for ssl in $(pwd)/*.ssl; do
         cat $ssl | while read line || [[ -n $line ]];
         do
-            $TESTSSL --full --logfile testssl/$line.testssl $line
+            $TESTSSL --append --full -oA testssl/$line.testssl $line
+            check_ciphers testssl/$line.testssl.csv
             echo "[+] Done testssl.sh for $line"
         done
     done
