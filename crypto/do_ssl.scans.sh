@@ -10,15 +10,13 @@ WORKDIR=~/code/security-tools/crypto
 
 GNMAP=$(find . -maxdepth 1 -iname "*.gnmap")
 if [[ -z "$GNMAP" ]]; then
-    echo "[-] No gnmap files, exiting"
-    exit 1
+    echo "[WARNING] No gnmap files, only --target will work"
 fi
 if [[ $OSTYPE == darwin* ]]; then
 	HEAD=ghead
 else
 	HEAD=head
 fi
-
 
 check_ciphers() {
     if [ ! -s "$WORKDIR/openssl_cipher_strength.txt" ]; then
@@ -71,6 +69,7 @@ parse_nmap() {
 	    cat $gnmap | awk '{for(i=1;i<=NF;i++){if ($i ~ /ssl/){print $2":"$i}}}' | awk -F "/" '{print $1}' > $(basename $gnmap).ssl
 	done
 }
+
 while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do case $1 in
     -h | --help )
         help
