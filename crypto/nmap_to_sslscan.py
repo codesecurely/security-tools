@@ -72,7 +72,7 @@ def print_results(sslscan_xml, nosecure, strength_dict):
         print(sslscan_parsed[0]['host']+":"+sslscan_parsed[0]['port'])
         for ciphersuite in sslscan_parsed:
             if nosecure:
-                if strength_dict[ciphersuite['id']] == "secure":
+                if strength_dict[ciphersuite['id']] == "secure" or strength_dict[ciphersuite['id']] == "recommended":
                     continue
             print(ciphersuite['proto'], ciphersuite['cipher'], strength_dict[ciphersuite['id']])
         print()
@@ -81,7 +81,8 @@ def main(argv):
         parser = argparse.ArgumentParser(description="Run sslscan based on nmap results and assess cipher suites strength")
         parser.add_argument('--inputfile', required=True, help="nmap XML file - scan needs to be run with -sV flag")
         parser.add_argument('--nosecure', default=False, action='store_true', help="(optional, False default) do not print secure cipher suites")
-        parser.add_argument('--noscan', default=False, action='store_true', help="(optional, False default) do not run sslscan, just parse")
+        parser.add_argument('--noscan', default=False, action='store_true', help="(optional, False default) do not run sslscan, just parse sslscan output")
+        parser.add_argument('--nmaponly', default=False, action='store_true', help="(optional, False default) do not run sslscan, just parse nmap file and print targets")
         parser.add_argument('--ext', default='sslscan.xml', help="(optional, sslscan.xml default) extension for sslscan output files, useful if you have own sslscan files")
         parser.add_argument('--output', default=os.getcwd(), help="(optional, cwd default) path to resulting XML files from sslscan")
         parser.add_argument('--reportfile', help="(optional) path to report file for all parsed hosts")
@@ -93,12 +94,18 @@ def main(argv):
         noscan = args.noscan
         ext = args.ext
         reportfile = args.reportfile
-
+        nmaponly = args.nmaponly
+        
         if not os.path.exists(output):
             os.mkdir(output)
 
         nmap_root = parse_xml_file(inputfile).getroot()
         sslscan_targets = get_ssl_targets(nmap_root)
+        if nmaponly:
+            for target in sslscan_targets:
+                print(target)
+            sys.exit(0)
+
         if not noscan:
             run_sslscan(sslscan_targets, output, ext)
         sslscan_xml = get_sslscan_output_files(output, ext)
