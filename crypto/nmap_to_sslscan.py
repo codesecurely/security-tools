@@ -72,7 +72,7 @@ def print_results(sslscan_xml, nosecure, strength_dict):
         print(sslscan_parsed[0]['host']+":"+sslscan_parsed[0]['port'])
         for ciphersuite in sslscan_parsed:
             if nosecure:
-                if strength_dict[ciphersuite['id']] == "secure":
+                if strength_dict[ciphersuite['id']] == "secure" or strength_dict[ciphersuite['id']] == "recommended":
                     continue
             print(ciphersuite['proto'], ciphersuite['cipher'], strength_dict[ciphersuite['id']])
         print()
