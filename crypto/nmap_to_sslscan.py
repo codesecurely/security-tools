@@ -69,7 +69,8 @@ def get_api_data():
 def print_results(sslscan_xml, nosecure, strength_dict):
     for file in sslscan_xml:
         sslscan_parsed = get_ciphers_from_xml(parse_xml_file(file).getroot())
-        print(sslscan_parsed[0]['host']+":"+sslscan_parsed[0]['port'])
+        if sslscan_parsed[0]['host'] and sslscan_parsed[0]['port']:
+            print(sslscan_parsed[0]['host']+":"+sslscan_parsed[0]['port'])
         for ciphersuite in sslscan_parsed:
             if nosecure:
                 if strength_dict[ciphersuite['id']] == "secure" or strength_dict[ciphersuite['id']] == "recommended":
@@ -101,6 +102,7 @@ def main(argv):
 
         nmap_root = parse_xml_file(inputfile).getroot()
         sslscan_targets = get_ssl_targets(nmap_root)
+        
         if nmaponly:
             for target in sslscan_targets:
                 print(target)
