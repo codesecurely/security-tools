@@ -11,43 +11,44 @@ import shutil
 # set $PATH for go binaries
 
 
-def run_amass(target):
+def run_amass(target, output):
     subprocess.run([
         'amass',
         'enum',
         '-passive',
         '-d', target,
-        '-o', 'amass-'+target+'.txt'])
+        '-o', os.path.join(output, 'amass-'+target+'.txt')])
 
 
-def run_massdns(target, resolvers):
+def run_massdns(target, resolvers, output):
+    print(output)
     subprocess.run([
         'massdns',
         '-q',
-        '-r', resolvers,
+        '-r', os.path.join(output, resolvers),
         '-t', 'A',
         '-o', 'S',
-        '-w', 'massdns-'+target+'.txt',
-        'amass-'+target+'.txt'])
+        '-w', os.path.join(output, 'massdns-'+target+'.txt'),
+        os.path.join(output, 'amass-'+target+'.txt')])
 
 
-def find_A_records(file, target):
-    ips = []
+def find_A_records(file, target, output):
+    ips = set()  # we only want unique ips
     with open(file, 'r') as resolved:
         for line in resolved:
             if "A" in line.split():
-                ips.append(line.split()[2])
-    with open('resolved-'+target+'.txt', 'w') as A_records:
+                ips.add(line.split()[2])
+    with open(os.path.join(output, 'resolved-'+target+'.txt'), 'w') as A_records:
         for ip in ips:
             A_records.write(ip+'\n')
 
 
-def run_smap(target, targets):
+def run_smap(target, targets, output):
     subprocess.run([
         'smap',
         '-sV',
         '-iL', targets,
-        '-oA', 'smap-'+target])
+        '-oA', os.path.join(output, 'smap-'+target)])
 
 
 def check_dependencies():
@@ -62,8 +63,8 @@ def check_dependencies():
         exit(1)
 
 
-def prepare_resolvers():
-    with open('resolvers.txt', 'w') as resolvers:
+def prepare_resolvers(output):
+    with open(os.path.join(output, 'resolvers.txt'), 'w') as resolvers:
         resolvers.write('1.0.0.1'+'\n')
         resolvers.write('8.8.8.8'+'\n')
         resolvers.write('208.67.220.222'+'\n')
@@ -77,24 +78,38 @@ def main(argv):
                         help="domain for amass, example.com")
     parser.add_argument('--resolvers', required=False,
                         help="a file with resolvers in each line for massdns, optional")
+    parser.add_argument('--output', required=False,
+                        help="directory to save results, domain name as dirname otherwise, optional")
     args = parser.parse_args()
 
     check_dependencies()
 
-    if not args.resolvers:
-        prepare_resolvers()
-        resolvers = 'resolvers.txt'
+    output = args.domain
+
+    if args.output:
+        output = args.output
+
+    if output and not os.path.isdir(output):
+        os.makedirs(output, exist_ok=True)
 
     resolvers = args.resolvers
 
-    if not os.path.isfile('amass-'+args.domain+'.txt'):
-        run_amass(args.domain)
-    if not os.path.isfile('massdns-'+args.domain+'.txt'):
-        run_massdns(args.domain, resolvers)
-    if os.path.isfile('massdns-'+args.domain+'.txt'):
-        find_A_records('massdns-'+args.domain+'.txt', args.domain)
-    if os.path.isfile('resolved-'+args.domain+'.txt'):
-        run_smap(args.domain, 'resolved-'+args.domain+'.txt')
+    if not args.resolvers:
+        prepare_resolvers(output)
+        resolvers = 'resolvers.txt'
+
+    print(os.path.join(output, resolvers))
+
+    if not os.path.isfile(os.path.join(output, 'amass-'+args.domain+'.txt')):
+        run_amass(args.domain, output)
+    if not os.path.isfile(os.path.join(output, 'massdns-'+args.domain+'.txt')):
+        run_massdns(args.domain, resolvers, output)
+    if os.path.isfile(os.path.join(output, 'massdns-'+args.domain+'.txt')):
+        find_A_records(os.path.join(output, 'massdns-' +
+                       args.domain+'.txt'), args.domain, output)
+    if os.path.isfile(os.path.join(output, 'resolved-'+args.domain+'.txt')):
+        run_smap(args.domain, os.path.join(
+            output, 'resolved-'+args.domain+'.txt'), output)
 
 
 if __name__ == '__main__':
