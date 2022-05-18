@@ -21,7 +21,6 @@ def run_amass(target, output):
 
 
 def run_massdns(target, resolvers, output):
-    print(output)
     subprocess.run([
         'massdns',
         '-q',
@@ -97,8 +96,6 @@ def main(argv):
     if not args.resolvers:
         prepare_resolvers(output)
         resolvers = 'resolvers.txt'
-
-    print(os.path.join(output, resolvers))
 
     if not os.path.isfile(os.path.join(output, 'amass-'+args.domain+'.txt')):
         run_amass(args.domain, output)
